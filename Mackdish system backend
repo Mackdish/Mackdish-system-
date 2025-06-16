@@ -1,0 +1,146 @@
+// src/main.ts
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  app.enableCors();
+  await app.listen(3000);
+}
+bootstrap();
+
+// src/app.module.ts
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { StudentModule } from './student/student.module';
+import { FeeModule } from './fee/fee.module';
+import { ExamModule } from './exam/exam.module';
+import { AuthModule } from './auth/auth.module';
+import { UserModule } from './user/user.module';
+
+@Module({
+  imports: [
+    TypeOrmModule.forRoot({
+      type: 'sqlite',
+      database: 'db.sqlite',
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: true,
+    }),
+    StudentModule,
+    FeeModule,
+    ExamModule,
+    AuthModule,
+    UserModule,
+  ],
+})
+export class AppModule {}
+
+// src/student/student.module.ts
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Student } from './student.entity';
+import { StudentService } from './student.service';
+import { StudentController } from './student.controller';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([Student])],
+  providers: [StudentService],
+  controllers: [StudentController],
+})
+export class StudentModule {}
+
+// src/student/student.entity.ts
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+
+@Entity()
+export class Student {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  name: string;
+
+  @Column()
+  classLevel: string;
+
+  @Column()
+  admissionNumber: string;
+}
+
+// src/student/student.service.ts
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Student } from './student.entity';
+
+@Injectable()
+export class StudentService {
+  constructor(@InjectRepository(Student) private repo: Repository<Student>) {}
+
+  create(data: Partial<Student>) {
+    const student = this.repo.create(data);
+    return this.repo.save(student);
+  }
+
+  findAll() {
+    return this.repo.find();
+  }
+
+  findOne(id: number) {
+    return this.repo.findOneBy({ id });
+  }
+
+  update(id: number, data: Partial<Student>) {
+    return this.repo.update(id, data);
+  }
+
+  remove(id: number) {
+    return this.repo.delete(id);
+  }
+}
+
+// src/student/student.controller.ts
+import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
+import { StudentService } from './student.service';
+
+@Controller('students')
+export class StudentController {
+  constructor(private readonly studentService: StudentService) {}
+
+  @Post()
+  create(@Body() body) {
+    return this.studentService.create(body);
+  }
+
+  @Get()
+  findAll() {
+    return this.studentService.findAll();
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.studentService.findOne(+id);
+  }
+
+  @Put(':id')
+  update(@Param('id') id: string, @Body() body) {
+    return this.studentService.update(+id, body);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.studentService.remove(+id);
+  }
+}
+
+// You can follow this same structure for: fee, exam, auth, and user modules.
+
+// Additional setup includes:
+// - JWT for login in `auth` module
+// - Role-based access guards in `user` module
+// - SMS/Mpesa integration via service layer
+// - Database config and connection
+
+// To run the project:
+// npm install
+// npm run start:dev
